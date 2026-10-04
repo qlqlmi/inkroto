@@ -1,0 +1,28 @@
+# Pencil look, in the spirit of hand-rotoscoped graphite animation:
+# gray sketchy lines drawn in several passes, hatched shading, no solid black,
+# distance fading to white paper, and a still paper grain under the boil.
+#
+#   inkroto render photo.jpg -o out.mp4 --config configs/pencil.yaml
+#
+# The pencil tunables themselves live under stylize.pencil in default.yaml.
+stylize:
+  medium: pencil
+  haze:
+    value: 0.97            # distance fades to paper, not to gray
+    density: 0.7
+  tones:
+    percentiles: [5, 40]   # more white page
+  lines:
+    wobble_px: 1.6         # a little more boil between drawings
+  hatch:                   # pencil shading is mostly hatching
+    spacing: 5
+    angle: 45
+    thickness: 1.3
+color:
+  enabled: false           # graphite only
+atmosphere:
+  smoke:
+    enabled: false
+film:
+  grain: 0.02              # the paper supplies the texture
+  vignette: 0.0

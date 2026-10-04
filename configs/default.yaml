@@ -1,0 +1,157 @@
+seed: 1234
+
+output:
+  fps: 24
+  width: 1280
+  duration_s: 4.0
+
+motion:
+  backend: parallax        # parallax | clip
+  pan: [0.03, 0.0]         # total travel as a fraction of width, height
+  zoom: 1.06               # end zoom, start is 1.0
+  focus: 0.5               # depth that stays still
+  clip_path: null          # video or gif for the clip backend; set automatically when INPUT is a video
+  depth_smoothing: 0.5     # clip backend: weight of each new drawing's depth in a running average (1 = none)
+  matte_threshold: 0.5     # matte above this is subject when building the background plate
+  dilate_px: 9             # grow the subject mask by this much before inpainting the background
+  inpaint_radius: 5        # cv2.inpaint radius, in half-resolution pixels
+  depth_blur: 4.0          # gaussian sigma (px) on the depth that drives the warp
+
+cadence:
+  hold: 2                  # output frames per drawing
+
+stylize:
+  medium: pencil              # ink | pencil (graphite look, see stylize.pencil and configs/pencil.yaml)
+  contrast:                # local contrast (CLAHE): helps flat, murky photos; can darken vignetted edges
+    enabled: true
+    clip_limit: 2.0        # higher = stronger local contrast, more noise
+    tiles: 8               # grid size; smaller tiles = more local
+  relight:
+    enabled: true
+    direction: [-0.6, -0.5, 0.6]
+    strength: 0.4
+    normal_blur: 3.0
+    normal_z: 1.0          # z of the shading normals; smaller = steeper, harder shading
+  haze:
+    enabled: true
+    start: 0.4             # depth below this starts to fade
+    density: 0.5           # how far the farthest pixels move toward value
+    value: 0.75            # gray that far objects fade toward
+  simplify:
+    method: kuwahara       # kuwahara | meanshift | bilateral
+    radius: 3              # larger = flatter regions, less detail
+    sigma_color: 0.1       # color range for meanshift and bilateral, luminance units
+  tones:
+    percentiles: [5, 50]    # black below the 1st, white above the 2nd
+    mid_value: 0.55
+    jitter: 0.015
+  lines:
+    mode: edges            # edges: ink edges at any brightness | level: classic XDoG (misses edges in bright areas)
+    source: relit          # where lines are traced: relit (before haze) | hazed | simplified
+    sigma: 0.9             # line scale in px; smaller = finer lines
+    k: 1.6
+    p: 20.0
+    epsilon: 0.04          # level mode: also inks flat areas darker than this
+    edge_threshold: 0.10   # edges mode: minimum edge contrast that gets a line; lower = more lines
+    denoise: 0.06          # edge-preserving smoothing before tracing, so film grain is not drawn (0 = off)
+    denoise_px: 2.0        # spatial size of that smoothing
+    phi: 40.0
+    wobble_px: 1.2         # max hand-drawn displacement of the line layer
+    wobble_scale: 32       # px size of the wobble's bends; smaller = shakier
+  hatch:
+    enabled: true
+    spacing: 9             # px between strokes; wider keeps small shapes readable
+    angle: 35              # degrees; dark midtones also get angle + 90
+    thickness: 0.9         # px
+    jitter_px: 1.0         # how far strokes wander sideways
+    thickness_jitter: 0.4  # relative stroke thickness variation
+    noise_scale: 40        # px size of the low-frequency unevenness
+    segment: [20, 80]      # stroke segment length range, px
+    gap: [2, 10]           # gap between segments, px
+  cleanup:
+    min_area: 24
+    morph: 0               # open/close kernel; >1 also erases features thinner than this
+  faces:                   # detected faces read as clean light shapes
+    enabled: true          # first use downloads OpenCV's YuNet face model (~230 KB) into the cache folder
+    simplify_radius: 7     # stronger simplify inside faces
+    two_tone: true         # faces get only black and white: the mid tone becomes white, no hatching
+    min_score: 0.75        # detector confidence needed to count as a face; raise it if objects are mistaken for faces
+  pencil:                  # used when medium is pencil
+    line_value: 0.15       # darkest graphite line (ink is 0.0)
+    passes: 3              # sketchy overdraw: each pass redraws the lines with its own wobble
+    pass_offset_px: 0.8    # how far the passes drift apart
+    pressure: 0.35         # line darkness variation along strokes
+    pressure_scale: 48     # px size of the pressure variation
+    break_rate: 0.15       # fraction of line length left as gaps
+    break_scale: 14        # px length scale of the gaps
+    shade_values: [0.4, 0.9]    # graphite value of shadows and of the mid tone (hatching adds the rest)
+    paper_tooth: 0.6       # how much the paper grain breaks up graphite
+    paper_scale: 1.5       # px size of the paper grain
+    paper_grain: 0.05      # paper texture visible on blank paper
+    smudge: 0.8            # px blur that softens the shading
+    paper_tint: [0.97, 0.96, 0.92]  # page color
+
+color:
+  enabled: true
+  hue_ranges: [[0, 12], [168, 180], [12, 28]]   # OpenCV hue, 0..180
+  min_sat: 0.55
+  min_val: 0.35
+  strength: 0.9            # how far masked pixels move from ink toward paint
+  morph: 3                 # px open kernel that removes specks from the mask
+  min_area: 64             # px; smaller color islands are dropped
+  feather: 1.5             # px blur on the mask edge
+  accent_saturation: 0.9   # flat paint saturation
+  accent_values: [0.55, 0.9]  # the two paint brightness levels (dark, light)
+  accent_split: 0.5        # source value below this gets the dark level
+
+atmosphere:
+  smoke:
+    enabled: true
+    layers: 3
+    style: soft            # soft: soft-edged wisps | flat: hard-edged flat-tone shapes
+    opacity: 0.4             # per layer
+    speed: 0.002             # scroll per frame, fraction of the frame, farthest layer (~60 px/s at 1280, 24 fps)
+    depths: [0.1, 0.6]       # depth of the farthest and nearest layer; only scene farther than a layer gets its smoke
+    octaves: 4
+    base_cells: 3            # noise cells across the frame for the farthest layer
+    scale_step: 1.5          # each nearer layer's wisps are this much larger
+    speed_step: 1.5          # and scroll this much faster
+    direction: [1.0, -0.25]  # drift direction (x right, y down)
+    softness: 0.1            # depth range of the soft edge where smoke meets the scene
+    density: [0.52, 0.68]    # noise range mapped from clear to full smoke; narrower = crisper clumps
+    value: 0.72              # gray the smoke darkens paper toward (multiply, so ink stays black)
+  embers:
+    enabled: false           # off by default; turn on with --set atmosphere.embers.enabled=true
+    count: 120
+    speed: [0.05, 0.2]       # rise speed, frame heights per second
+    sway: [0.003, 0.015]     # sideways sway amplitude, frame widths
+    sway_hz: [0.2, 0.8]
+    size: [1.2, 2.8]         # core radius, px
+    life: [1.5, 4.0]         # seconds; particles loop when their life ends
+    brightness: 1.0          # core opacity
+    color: [1.0, 0.5, 0.12]  # accent orange; white when color is disabled
+    glow: 0.5                # additive glow strength, visible over ink
+    glow_size: 3.0           # glow radius in core radii
+    trail: 4                 # streak samples behind each spark (1 = no streak)
+    trail_s: 0.012           # seconds between streak samples
+    rim: 1.5                 # ink rim strength around white sparks when color is off
+    rim_size: 1.6            # rim radius in core radii
+  ash:
+    enabled: false
+    count: 200
+    speed: [0.01, 0.04]      # fall speed, frame heights per second
+    sway: [0.005, 0.02]
+    sway_hz: [0.1, 0.4]
+    size: [0.8, 1.8]
+    life: [3.0, 8.0]
+    value: 0.6               # gray
+    opacity: 0.8
+
+film:
+  grain: 0.06              # grain std dev at mid gray; fades toward pure black and white
+  vignette: 0.35           # corner darkening
+  vignette_power: 2.0      # falloff shape; higher keeps the center clear longer
+  flicker: 0.03            # brightness gain amplitude
+  flicker_frames: 6        # frames between flicker noise knots; higher = slower
+  weave_px: 0.4            # frame weave amplitude, px
+  weave_frames: 3          # frames between weave noise knots

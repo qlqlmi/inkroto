@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "inkroto"
+version = "0.1.0"
+description = "Turn a still photo into a short black-and-white ink-style rotoscope video."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "numpy",
+    "opencv-python",
+    "pyyaml",
+    "typer",
+    "tqdm",
+    "imageio-ffmpeg",
+]
+
+[project.optional-dependencies]
+ml = ["torch", "transformers", "pillow", "rembg", "onnxruntime"]
+dev = ["pytest"]
+
+[project.scripts]
+inkroto = "inkroto.cli:app"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-m 'not slow'"
+markers = [
+    "slow: loads real models or is otherwise slow; deselected by default (run with -m slow)",
+]
